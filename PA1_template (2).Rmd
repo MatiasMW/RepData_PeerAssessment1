@@ -1,0 +1,154 @@
+---
+title: 'Reproducible Research: Peer Assessment 1'
+author: "Matias"
+date: "Sunday, March 15, 2015"
+output:
+  html_document:
+    keep_md: yes
+    theme: spacelab
+---
+
+##Loading and preprocessing the data.
+
+```{r}
+#Load the data
+activity<-read.table("C:/Users/Usuario/Downloads/Reproducible Research/activity.csv", 
+           header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+````
+
+
+##Exploring the data.
+```{r}
+
+names(activity)
+
+summary(activity)
+
+#Number of NA's
+table(is.na(activity))
+
+````
+
+##What is mean total number of steps taken per day?
+```{r}
+steps = rep(0,nlevels(activity$date))
+for( i in 1:nlevels(activity$date)) {
+        tot = activity[activity$date == levels(activity$date)[i],] 
+        steps[i] = sum(tot$steps)
+}
+steps =cbind(steps, levels(activity$date))
+num_steps=as.numeric(steps[,1])
+
+
+mn<-mean(na.omit(num_steps))
+md<-median(na.omit(num_steps))
+
+steps_per_day <- aggregate(activity[,c("steps"), drop=FALSE],
+                           by=list(date=activity$date), FUN=sum)
+hist(steps_per_day$steps)
+
+```
+The mean total number of steps taken per day is `r mean(na.omit(num_steps))` and the median is
+`r md`
+
+##What is the average daily activity pattern?
+
+```{r} 
+
+#Filling the NA`s values with the mean for that interval.
+library(dplyr)
+#Creating a new data set
+activity1=activity
+for(i in 1:length(activity1$steps)) if (is.na(activity$steps[i])){  
+   activity1$steps[i] = mean(filter(tm1, interval==activity1$interval[i])$steps)
+}
+hist(activity1$steps)
+
+mn2<-mean((activity1$steps))
+md2<-median((activity1$steps))
+```      
+The mean total number of steps taken per day is `r mn2` and the median is
+`r md2`
+```{r}
+#Para ver cantidad de pasos por intervalo
+
+
+#Grouping by interval
+by_interval <- tm1 %>% group_by(interval)
+#Takes the mean of steps by interval
+plot_by_interval <- by_interval %>% summarise_each(funs(mean),steps)
+#Plot
+plot(plot_by_interval$interval, plot_by_interval$steps, type="l")
+````
+#Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+plot_by_interval[plot_by_interval$steps==max(plot_by_interval$steps),]
+```
+
+```{r}
+ 
+#Removes NA's from activity
+
+tm1<-activity[!is.na(activity$steps),]
+
+summary(tm1)
+
+```
+
+```{r}
+
+#Para calcular el número de pasos por día
+s = rep(0,nlevels(tm1$date))
+for( i in 1:nlevels(tm1$date)) {
+        tv = tm1[tm1$date == levels(tm1$date)[i],] 
+        s[i] = sum(tv$steps)
+}
+s =cbind(s, levels(tm1$date))
+```
+
+```{r echo=FALSE}  
+tab<-as.data.frame(s)
+tab$steps=tab[,1]
+tab$date=tab[,2]
+tab[,1]=NULL
+tab[,1]=NULL
+```
+The number of steps taken each day is
+```{r}
+tab
+```
+
+
+###Histogram of the total number of steps taken each day
+```{r}
+hist(as.numeric(s[,1]))
+```
+The number of NA's in the data set is 2304 
+```{r} 
+table(is.na(activity))  
+```
+
+
+
+```{r}
+#Transform date
+activity1[,4]<-as.Date(activity1$date)
+activity1[,4]<-weekdays(activity1[,4])
+
+#Creates variable days
+for (i in 1:nrow(activity1)) {if(activity1[i,4] == "sábado" 
+                                | activity1[i,4] == "domingo") 
+                        activity1$days[i] = "weekend"
+                       
+                           if(activity1[i,4] == "lunes" 
+                              | activity1[i,4] == "martes"
+                              | activity1[i,4] == "miércoles" 
+                              | activity1[i,4] == "jueves" 
+                              | activity1[i,4] == "viernes")
+                         activity1$days[i] = "weekday"
+                        }
+#Transform variable days to factor
+activity1$days = factor(activity1$days)
+library("ggplot2")
+qplot(interval, steps, data=activity1, facets=days~., geom="path")
+```
